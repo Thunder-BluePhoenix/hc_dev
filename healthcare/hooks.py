@@ -4,29 +4,24 @@ app_publisher = "Blue Phoenix"
 app_description = "Hospital management "
 app_email = "bluephoenix00995@gmail.com"
 app_license = "mit"
+required_apps = ["erpnext"]
+app_home = "/app/healthcare"
 
-# Apps
-# ------------------
-
-# required_apps = []
-
-# Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "healthcare",
-# 		"logo": "/assets/healthcare/logo.png",
-# 		"title": "Health Care",
-# 		"route": "/healthcare",
-# 		"has_permission": "healthcare.api.permission.has_app_permission"
-# 	}
-# ]
+add_to_apps_screen = [
+	{
+		"name": "healthcare",
+		"logo": "/assets/healthcare/images/healthcare.svg",
+		"title": "Health",
+		"route": "/app/healthcare",
+		"has_permission": "erpnext.check_app_permission",
+	}
+]
 
 # Includes in <head>
 # ------------------
-
 # include js, css files in header of desk.html
 # app_include_css = "/assets/healthcare/css/healthcare.css"
-# app_include_js = "/assets/healthcare/js/healthcare.js"
+app_include_js = "healthcare.bundle.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/healthcare/css/healthcare.css"
@@ -43,15 +38,10 @@ app_license = "mit"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {"Sales Invoice": "public/js/sales_invoice.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
-
-# Svg Icons
-# ------------------
-# include app icons in desk
-# app_include_icons = "healthcare/public/icons.svg"
 
 # Home Pages
 # ----------
@@ -74,38 +64,25 @@ app_license = "mit"
 # ----------
 
 # add methods and filters to jinja environment
-# jinja = {
-# 	"methods": "healthcare.utils.jinja_methods",
-# 	"filters": "healthcare.utils.jinja_filters"
-# }
+jinja = {
+	"methods": [
+		"healthcare.healthcare.doctype.diagnostic_report.diagnostic_report.diagnostic_report_print",
+		"healthcare.healthcare.utils.generate_barcodes",
+		"healthcare.healthcare.doctype.observation.observation.get_observations_for_medical_record",
+	]
+}
 
 # Installation
 # ------------
 
 # before_install = "healthcare.install.before_install"
-# after_install = "healthcare.install.after_install"
+after_install = "healthcare.setup.setup_healthcare"
 
 # Uninstallation
 # ------------
 
-# before_uninstall = "healthcare.uninstall.before_uninstall"
-# after_uninstall = "healthcare.uninstall.after_uninstall"
-
-# Integration Setup
-# ------------------
-# To set up dependencies/integrations with other apps
-# Name of the app being installed is passed as an argument
-
-# before_app_install = "healthcare.utils.before_app_install"
-# after_app_install = "healthcare.utils.after_app_install"
-
-# Integration Cleanup
-# -------------------
-# To clean up dependencies/integrations with other apps
-# Name of the app being uninstalled is passed as an argument
-
-# before_app_uninstall = "healthcare.utils.before_app_uninstall"
-# after_app_uninstall = "healthcare.utils.after_app_uninstall"
+before_uninstall = "healthcare.uninstall.before_uninstall"
+after_uninstall = "healthcare.uninstall.after_uninstall"
 
 # Desk Notifications
 # ------------------
@@ -129,21 +106,48 @@ app_license = "mit"
 # ---------------
 # Override standard doctype classes
 
-# override_doctype_class = {
-# 	"ToDo": "custom_app.overrides.CustomToDo"
-# }
+override_doctype_class = {
+	"Sales Invoice": "healthcare.healthcare.custom_doctype.sales_invoice.HealthcareSalesInvoice",
+}
 
 # Document Events
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"*": {
+		"on_submit": "healthcare.healthcare.doctype.patient_history_settings.patient_history_settings.create_medical_record",
+		"on_cancel": "healthcare.healthcare.doctype.patient_history_settings.patient_history_settings.delete_medical_record",
+		"on_update_after_submit": "healthcare.healthcare.doctype.patient_history_settings.patient_history_settings.update_medical_record",
+	},
+	"Sales Invoice": {
+		"on_submit": "healthcare.healthcare.utils.manage_invoice_submit_cancel",
+		"on_cancel": "healthcare.healthcare.utils.manage_invoice_submit_cancel",
+		"validate": "healthcare.healthcare.utils.manage_invoice_validate",
+	},
+	"Company": {
+		"after_insert": "healthcare.healthcare.utils.create_healthcare_service_unit_tree_root",
+		"on_trash": "healthcare.healthcare.utils.company_on_trash",
+	},
+	"Patient": {
+		"after_insert": "healthcare.regional.india.abdm.utils.set_consent_attachment_details"
+	},
+	"Payment Entry": {
+		"on_submit": "healthcare.healthcare.custom_doctype.payment_entry.set_paid_amount_in_treatment_counselling",
+		"on_cancel": "healthcare.healthcare.custom_doctype.payment_entry.set_paid_amount_in_treatment_counselling",
+	},
+}
+
+scheduler_events = {
+	"all": [
+		"healthcare.healthcare.doctype.patient_appointment.patient_appointment.send_appointment_reminder",
+	],
+	"daily": [
+		"healthcare.healthcare.doctype.patient_appointment.patient_appointment.update_appointment_status",
+		"healthcare.healthcare.doctype.fee_validity.fee_validity.update_validity_status",
+		"healthcare.healthcare.doctype.inpatient_record.inpatient_record.add_occupied_service_unit_in_ip_to_billables",
+	],
+}
 
 # Scheduled Tasks
 # ---------------
@@ -169,7 +173,7 @@ app_license = "mit"
 # Testing
 # -------
 
-# before_tests = "healthcare.install.before_tests"
+before_tests = "healthcare.healthcare.utils.before_tests"
 
 # Overriding Methods
 # ------------------------------
@@ -187,22 +191,9 @@ app_license = "mit"
 
 # exempt linked doctypes from being automatically cancelled
 #
-# auto_cancel_exempted_doctypes = ["Auto Repeat"]
-
-# Ignore links to specified DocTypes when deleting documents
-# -----------------------------------------------------------
-
-# ignore_links_on_delete = ["Communication", "ToDo"]
-
-# Request Events
-# ----------------
-# before_request = ["healthcare.utils.before_request"]
-# after_request = ["healthcare.utils.after_request"]
-
-# Job Events
-# ----------
-# before_job = ["healthcare.utils.before_job"]
-# after_job = ["healthcare.utils.after_job"]
+auto_cancel_exempted_doctypes = [
+	"Inpatient Medication Entry",
+]
 
 # User Data Protection
 # --------------------
@@ -235,10 +226,82 @@ app_license = "mit"
 # 	"healthcare.auth.validate"
 # ]
 
-# Automatically update python controller files with type annotations for this app.
-# export_python_type_annotations = True
+global_search_doctypes = {
+	"Healthcare": [
+		{"doctype": "Patient", "index": 1},
+		{"doctype": "Medical Department", "index": 2},
+		{"doctype": "Vital Signs", "index": 3},
+		{"doctype": "Healthcare Practitioner", "index": 4},
+		{"doctype": "Patient Appointment", "index": 5},
+		{"doctype": "Healthcare Service Unit", "index": 6},
+		{"doctype": "Patient Encounter", "index": 7},
+		{"doctype": "Antibiotic", "index": 8},
+		{"doctype": "Diagnosis", "index": 9},
+		{"doctype": "Lab Test", "index": 10},
+		{"doctype": "Clinical Procedure", "index": 11},
+		{"doctype": "Inpatient Record", "index": 12},
+		{"doctype": "Sample Collection", "index": 13},
+		{"doctype": "Patient Medical Record", "index": 14},
+		{"doctype": "Appointment Type", "index": 15},
+		{"doctype": "Fee Validity", "index": 16},
+		{"doctype": "Practitioner Schedule", "index": 17},
+		{"doctype": "Dosage Form", "index": 18},
+		{"doctype": "Lab Test Sample", "index": 19},
+		{"doctype": "Prescription Duration", "index": 20},
+		{"doctype": "Prescription Dosage", "index": 21},
+		{"doctype": "Sensitivity", "index": 22},
+		{"doctype": "Complaint", "index": 23},
+		{"doctype": "Medical Code", "index": 24},
+	]
+}
 
-# default_log_clearing_doctypes = {
-# 	"Logging DocType Name": 30  # days to retain logs
-# }
+domains = {
+	"Healthcare": "healthcare.setup",
+}
 
+# nosemgrep
+standard_portal_menu_items = [
+	{
+		"title": "Personal Details",
+		"route": "/personal-details",
+		"reference_doctype": "Patient",
+		"role": "Patient",
+	},
+	{
+		"title": "Lab Test",
+		"route": "/lab-test",
+		"reference_doctype": "Lab Test",
+		"role": "Patient",
+	},
+	{
+		"title": "Prescription",
+		"route": "/prescription",
+		"reference_doctype": "Patient Encounter",
+		"role": "Patient",
+	},
+	{
+		"title": "Patient Appointment",
+		"route": "/patient-appointments",
+		"reference_doctype": "Patient Appointment",
+		"role": "Patient",
+	},
+]
+
+has_website_permission = {
+	"Lab Test": "healthcare.healthcare.web_form.lab_test.lab_test.has_website_permission",
+	"Patient Encounter": "healthcare.healthcare.web_form.prescription.prescription.has_website_permission",
+	"Patient Appointment": "healthcare.healthcare.web_form.patient_appointments.patient_appointments.has_website_permission",
+	"Patient": "healthcare.healthcare.web_form.personal_details.personal_details.has_website_permission",
+}
+
+standard_queries = {
+	"Healthcare Practitioner": "healthcare.healthcare.doctype.healthcare_practitioner.healthcare_practitioner.get_practitioner_list"
+}
+
+treeviews = [
+	"Healthcare Service Unit",
+]
+
+company_data_to_be_ignored = [
+	"Healthcare Service Unit",
+]
